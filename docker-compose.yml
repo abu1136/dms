@@ -1,0 +1,50 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: dms_db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_password}
+      MYSQL_DATABASE: ${MYSQL_DB:-dms}
+      MYSQL_USER: ${MYSQL_USER:-dms_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-dms_password}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: dms_app
+    environment:
+      - APP_NAME=${APP_NAME:-DMS}
+      - ENV=${ENV:-production}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - MYSQL_HOST=${MYSQL_HOST:-db}
+      - MYSQL_PORT=${MYSQL_PORT:-3306}
+      - MYSQL_DB=${MYSQL_DB:-dms}
+      - MYSQL_USER=${MYSQL_USER:-dms_user}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-dms_password}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-me-in-production}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
+      - COMPANY_NAME=${COMPANY_NAME:-Example Company Ltd.}
+      - COMPANY_ADDRESS=${COMPANY_ADDRESS:-123 Business Road, City, Country}
+      - STORAGE_DIR=${STORAGE_DIR:-/app/storage/uploads}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./storage/uploads:/app/storage/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  mysql_data:
