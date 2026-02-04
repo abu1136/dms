@@ -17,7 +17,10 @@ from PyPDF2 import PdfReader, PdfWriter
 from html.parser import HTMLParser
 from html import unescape
 
-from app.config import get_settings
+from app.config import Settings
+
+# Get settings instance
+settings = Settings()
 
 # Register Unicode fonts for special characters support
 try:
