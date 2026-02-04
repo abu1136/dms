@@ -14,12 +14,10 @@ A production-ready web-based Document Management System built with FastAPI, MySQ
 - **Audit Logging**: Track all document creation and access events in JSON format
 - **Document Preview**: Preview generated PDF documents in a modal before downloading
 - **Multi-Page Support**: Automatic page breaking with company letterhead template on each page
-- **Special Characters**: Support for rupee symbol (₹) and other Unicode characters in PDFs
- **Universal Font Support**: Comprehensive Unicode support for 150+ languages and 500+ fonts
- **Multilingual Documents**: Mix English, Chinese, Arabic, Cyrillic, Devanagari, Thai, and any other scripts in one document
- **Special Characters**: Supports rupee (₹), currency symbols, mathematical operators, emoji, and all Unicode ranges
-- **Document Templates**: `/storage/uploads/templates/` - Template PDFs for letterhead
-- **Backup Archives**: `/app/storage/backups/` - ZIP files containing backup data (admin only)
+- **Universal Font Support**: Comprehensive Unicode support for 150+ languages
+- **Special Characters**: Supports rupee (₹), currency symbols, mathematical operators, and emoji
+- **Document Templates**: Upload custom letterhead templates
+- **Backup & Restore**: Complete data backup and restore functionality (admin only)
 
 ## Tech Stack
 
@@ -338,18 +336,16 @@ Edit `app/services/pdf_generator.py` to customize PDF generation and add new tem
 
 ## Production Deployment
 
-### Security Features (Implemented 2026-02-03)
+### Security Features
 
 This application includes comprehensive security hardening:
 
 ✅ **No Hardcoded Credentials**: All secrets use environment variables  
 ✅ **Rate Limiting**: 5 login attempts per minute per IP address  
 ✅ **Secure File Uploads**: UUID filenames, 50MB size limit, path traversal prevention  
-✅ **Input Validation**: Pydantic Enums and validators on all user inputs  
+✅ **Input Validation**: Pydantic validators on all user inputs  
 ✅ **Error Handling**: Generic client messages, detailed server-side logging  
-✅ **Production Template**: `.env.production` with secure configuration guide  
-
-**See [SECURITY_FIXES_COMPLETE.md](SECURITY_FIXES_COMPLETE.md) for complete details.**
+✅ **Production Template**: `.env.production` with secure configuration guide
 
 ### Production Setup
 
