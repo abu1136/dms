@@ -120,7 +120,9 @@ async def download_backup(
         backup_path = os.path.join(backup_dir, backup_name)
         
         # Security check
-        if '..' in backup_name or not backup_path.startswith(backup_dir):
+        backup_dir_abs = os.path.abspath(backup_dir)
+        backup_path_abs = os.path.abspath(backup_path)
+        if '..' in backup_name or not backup_path_abs.startswith(backup_dir_abs):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid backup name"
@@ -167,7 +169,9 @@ async def restore_backup(
         backup_path = os.path.join(backup_dir, backup_name)
         
         # Security check
-        if '..' in backup_name or not backup_path.startswith(backup_dir):
+        backup_dir_abs = os.path.abspath(backup_dir)
+        backup_path_abs = os.path.abspath(backup_path)
+        if '..' in backup_name or not backup_path_abs.startswith(backup_dir_abs):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid backup name"
@@ -180,25 +184,26 @@ async def restore_backup(
             )
         
         # Extract backup
-        docs_dir = os.path.join(settings.storage_dir, 'uploads')
+        storage_dir = settings.storage_dir
+        storage_dir_abs = os.path.abspath(storage_dir)
         
         with zipfile.ZipFile(backup_path, 'r') as zipf:
-            for file_info in zipf.filelist:
-                if file_info.filename.startswith('documents/'):
-                    file_name = os.path.basename(file_info.filename)
-                    with zipf.open(file_info) as source:
-                        target_path = os.path.join(docs_dir, file_name)
-                        os.makedirs(os.path.dirname(target_path), exist_ok=True)
-                        with open(target_path, 'wb') as target:
-                            target.write(source.read())
+            for file_info in zipf.infolist():
+                if file_info.is_dir():
+                    continue
                 
-                elif file_info.filename.startswith('templates/'):
-                    file_name = os.path.basename(file_info.filename)
-                    with zipf.open(file_info) as source:
-                        target_path = os.path.join(docs_dir, 'templates', file_name)
-                        os.makedirs(os.path.dirname(target_path), exist_ok=True)
-                        with open(target_path, 'wb') as target:
-                            target.write(source.read())
+                file_name = file_info.filename
+                if not file_name or file_name.startswith('/') or '..' in Path(file_name).parts:
+                    continue
+                
+                target_path = os.path.abspath(os.path.join(storage_dir, file_name))
+                if not target_path.startswith(storage_dir_abs):
+                    continue
+                
+                os.makedirs(os.path.dirname(target_path), exist_ok=True)
+                with zipf.open(file_info) as source:
+                    with open(target_path, 'wb') as target:
+                        target.write(source.read())
         
         return {'message': 'Backup restored successfully'}
     except HTTPException:

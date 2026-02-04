@@ -224,7 +224,7 @@ async def get_sync_status(
         'smb_share': settings.smb_share if settings.smb_enabled else None,
         'storage_dir': settings.storage_dir,
         'backup_dir': os.path.join(settings.storage_dir, 'backups'),
-        'uploads_dir': os.path.join(settings.storage_dir, 'uploads')
+        'uploads_dir': settings.storage_dir
     }
 
 
@@ -301,4 +301,3 @@ async def sync_to_nextcloud(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Sync operation failed. Please check your Nextcloud configuration and try again."
         )
-

@@ -4,7 +4,7 @@ from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException, status, Response
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy.orm import selectinload
 
 from app.auth.security import get_current_active_user
 from app.config import get_settings
@@ -20,6 +20,13 @@ from app.services.pdf_generator import PDFGeneratorService
 settings = get_settings()
 
 router = APIRouter(prefix="/api/documents", tags=["Documents"])
+
+
+def _document_base_query(db: Session, current_user: User):
+    query = db.query(Document).options(selectinload(Document.requested_by))
+    if current_user.role != 'admin':
+        query = query.filter(Document.requested_by_id == current_user.id)
+    return query
 
 
 @router.post("/", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
@@ -38,8 +45,12 @@ async def create_document(
         template = db.query(DocumentTemplate).filter(
             DocumentTemplate.id == document_data.template_id
         ).first()
-        if template:
-            template_path = template.file_path
+        if not template:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Template not found"
+            )
+        template_path = template.file_path
     
     # Generate document number
     doc_number = DocumentNumberService.generate_document_number(db)
@@ -94,13 +105,9 @@ async def list_documents(
     date_to: str | None = None,
 ):
     """List documents. Admins see all, users see only their own."""
-    query = db.query(Document)
+    query = _document_base_query(db, current_user)
     
-    # Role-based filtering
-    if current_user.role != 'admin':
-        query = query.filter(Document.requested_by_id == current_user.id)
-    else:
-        # Admin-only filters
+    if current_user.role == 'admin':
         if created_by:
             query = query.filter(Document.requested_by_id == created_by)
         
@@ -118,7 +125,6 @@ async def list_documents(
 
         if date_to:
             date_to_date = datetime.fromisoformat(date_to).date()
-            # Include the entire to_date by adding 1 day and using <
             end_local = local_tz.localize(datetime.combine(date_to_date + timedelta(days=1), time.min))
             end_utc = end_local.astimezone(pytz.utc).replace(tzinfo=None)
             query = query.filter(Document.created_at < end_utc)
@@ -139,7 +145,7 @@ async def search_documents(
     current_user: User = Depends(get_current_active_user)
 ):
     """Search and filter documents."""
-    query = db.query(Document)
+    query = _document_base_query(db, current_user)
     
     if document_number:
         query = query.filter(Document.document_number.contains(document_number))
@@ -147,7 +153,7 @@ async def search_documents(
     if title:
         query = query.filter(Document.title.contains(title))
     
-    if user_id:
+    if user_id and current_user.role == 'admin':
         query = query.filter(Document.requested_by_id == user_id)
     
     documents = query.all()
@@ -161,7 +167,11 @@ async def get_document(
     current_user: User = Depends(get_current_active_user)
 ):
     """Get a specific document by ID."""
-    document = db.query(Document).filter(Document.id == document_id).first()
+    document = (
+        _document_base_query(db, current_user)
+        .filter(Document.id == document_id)
+        .first()
+    )
     if not document:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -187,7 +197,11 @@ async def download_document(
     current_user: User = Depends(get_current_active_user)
 ):
     """Download a document PDF."""
-    document = db.query(Document).filter(Document.id == document_id).first()
+    document = (
+        _document_base_query(db, current_user)
+        .filter(Document.id == document_id)
+        .first()
+    )
     if not document:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

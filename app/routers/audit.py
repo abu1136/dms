@@ -2,6 +2,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import selectinload
 
 from app.auth.security import get_current_active_user, require_admin
 from app.database.session import get_db
@@ -20,7 +21,14 @@ async def list_audit_logs(
     limit: int = 50
 ):
     """List audit logs (admin only)."""
-    logs = db.query(AuditLog).order_by(AuditLog.timestamp.desc()).offset(skip).limit(limit).all()
+    logs = (
+        db.query(AuditLog)
+        .options(selectinload(AuditLog.user))
+        .order_by(AuditLog.timestamp.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
     return logs
 
 
@@ -35,6 +43,7 @@ async def get_user_audit_logs(
     """Get audit logs for a specific user (admin only)."""
     logs = (
         db.query(AuditLog)
+        .options(selectinload(AuditLog.user))
         .filter(AuditLog.user_id == user_id)
         .order_by(AuditLog.timestamp.desc())
         .offset(skip)
